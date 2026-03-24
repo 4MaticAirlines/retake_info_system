@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+retake.db
+.idea/
+data/input/excel_files/*
+data/input/statements/*
+!data/input/excel_files/.gitkeep
+!data/input/statements/.gitkeep
+data/output/*
+!data/output/.gitkeep

@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+python-dotenv
+requests
+beautifulsoup4
+python-multipart
+pandas
+openpyxl
+xlrd
+python-docx
+pypdf
+jinja2
