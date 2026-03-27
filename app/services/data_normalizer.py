@@ -20,6 +20,7 @@ class DataNormalizer:
     def _clean_text(value: Any) -> str:
         if value is None:
             return ""
+
         text = str(value).replace("\r", " ").replace("\n", " ").strip()
         text = re.sub(r"\s+", " ", text)
         return text
@@ -44,13 +45,47 @@ class DataNormalizer:
         return text.replace(" ", "")
 
     @staticmethod
-    def _split_groups(groups_text: str) -> list[str]:
+    def _normalize_group_token(token: str) -> str:
+        token = token.strip().upper()
+        token = token.replace("–", "-").replace("—", "-")
+        token = re.sub(r"\s+", "", token)
+        token = token.strip(" ,;")
+        return token
+
+    @staticmethod
+    def _extract_groups_from_text(groups_text: str) -> list[str]:
+        """
+        Более агрессивное извлечение групп из строки.
+        Поддерживает:
+        - разделение запятыми, точками с запятой, переводами строк
+        - строки вида: БЭК-22-ФК-1, БЭК-22-ФК-2
+        - одиночные группы внутри большого текста
+        """
         if not groups_text:
             return []
 
-        prepared = groups_text.replace(";", ",").replace("\n", ",")
-        parts = [part.strip().upper() for part in prepared.split(",") if part.strip()]
-        return list(dict.fromkeys(parts))
+        text = str(groups_text)
+        text = text.replace("\r", "\n")
+        text = text.replace("–", "-").replace("—", "-")
+
+        # сначала пробуем выделить группы регуляркой
+        # достаточно гибкая для MISIS-форматов
+        pattern = r"[A-Za-zА-Яа-яЁё0-9]+(?:-[A-Za-zА-Яа-яЁё0-9]+){1,6}"
+        regex_groups = re.findall(pattern, text)
+
+        groups = [DataNormalizer._normalize_group_token(item) for item in regex_groups if item.strip()]
+
+        # если регулярка ничего не дала, пробуем обычное разбиение
+        if not groups:
+            prepared = text.replace(";", ",").replace("\n", ",")
+            parts = [part for part in prepared.split(",") if part.strip()]
+            groups = [DataNormalizer._normalize_group_token(part) for part in parts if part.strip()]
+
+        # убираем пустые и дубли
+        groups = [group for group in groups if group]
+        groups = list(dict.fromkeys(groups))
+
+        return groups
 
     @staticmethod
     def _get_value(data: dict, aliases: list[str]) -> str:
@@ -67,6 +102,7 @@ class DataNormalizer:
         normalized: list[dict] = []
 
         current_teacher = ""
+        current_groups = ""
         current_date = ""
         current_time = ""
         current_room = ""
@@ -99,6 +135,12 @@ class DataNormalizer:
                 current_teacher = teacher
             else:
                 teacher = current_teacher
+
+            # очень важно: группы тоже могут идти "продолжением" строки
+            if groups:
+                current_groups = groups
+            else:
+                groups = current_groups
 
             if date:
                 current_date = date
@@ -136,7 +178,8 @@ class DataNormalizer:
             if discipline.strip().lower() in HEADER_SKIP_VALUES:
                 continue
 
-            groups_list = DataNormalizer._split_groups(groups)
+            groups_list = DataNormalizer._extract_groups_from_text(groups)
+            groups_normalized = ",".join(groups_list)
 
             normalized.append(
                 {
@@ -146,7 +189,7 @@ class DataNormalizer:
                     "teacher": teacher,
                     "groups": groups,
                     "groups_list": groups_list,
-                    "groups_normalized": ",".join(groups_list),
+                    "groups_normalized": groups_normalized,
                     "date": date,
                     "time": time,
                     "room": room,

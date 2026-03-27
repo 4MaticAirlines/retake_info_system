@@ -1,10 +1,33 @@
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.retake_record import RetakeRecord
 
 
 class RetakeRepository:
+    @staticmethod
+    def _normalize(group: str) -> str:
+        return str(group).strip().upper()
+
+    @staticmethod
+    def _group_matches(query: str, candidate: str) -> bool:
+        query = RetakeRepository._normalize(query)
+        candidate = RetakeRepository._normalize(candidate)
+
+        if not query or not candidate:
+            return False
+
+        # точное совпадение
+        if query == candidate:
+            return True
+
+        # общий запрос:
+        # БИВТ -> БИВТ-24-1
+        # БИВТ-24 -> БИВТ-24-1
+        if candidate.startswith(query + "-"):
+            return True
+
+        return False
+
     @staticmethod
     def clear_all(db: Session) -> None:
         db.query(RetakeRecord).delete()
@@ -46,16 +69,15 @@ class RetakeRepository:
 
     @staticmethod
     def find_by_group(db: Session, group: str):
-        group = group.strip().upper()
-        pattern = f"%{group}%"
+        query = RetakeRepository._normalize(group)
+        records = db.query(RetakeRecord).all()
 
-        return (
-            db.query(RetakeRecord)
-            .filter(
-                or_(
-                    RetakeRecord.groups_raw.ilike(pattern),
-                    RetakeRecord.groups_normalized.ilike(pattern),
-                )
-            )
-            .all()
-        )
+        result = []
+        for record in records:
+            groups_normalized = str(record.groups_normalized or "")
+            groups_list = [item.strip().upper() for item in groups_normalized.split(",") if item.strip()]
+
+            if any(RetakeRepository._group_matches(query, item) for item in groups_list):
+                result.append(record)
+
+        return result

@@ -18,7 +18,12 @@ class RetakeMatcher:
             return 0.0
 
         intersection = left_tokens & right_tokens
-        return len(intersection) / min(len(left_tokens), len(right_tokens))
+        union = left_tokens | right_tokens
+
+        if not union:
+            return 0.0
+
+        return len(intersection) / len(union)
 
     @staticmethod
     def _discipline_matches(record_discipline: str, statement_discipline: str) -> bool:
@@ -34,35 +39,13 @@ class RetakeMatcher:
         if left in right or right in left:
             return True
 
-        return RetakeMatcher._token_score(left, right) >= 0.5
-
-    @staticmethod
-    def _group_matches(record: dict, group: str) -> bool:
-        if not group:
-            return True
-
-        group = group.strip().upper()
-        groups_raw = str(record.get("groups", "")).upper()
-        groups_normalized = str(record.get("groups_normalized", "")).upper()
-
-        return group in groups_raw or group in groups_normalized
+        return RetakeMatcher._token_score(left, right) >= 0.45
 
     @staticmethod
     def build_statement_results(
         records: list[dict],
         disciplines: list[str],
-        group: str = "",
     ) -> list[dict]:
-        """
-        Возвращает список вида:
-        [
-            {
-                "discipline": "Алгоритмы дискретной математики",
-                "matches": [ ...пересдачи... ]
-            },
-            ...
-        ]
-        """
         result = []
 
         for discipline in disciplines:
@@ -70,9 +53,6 @@ class RetakeMatcher:
             seen = set()
 
             for record in records:
-                if not RetakeMatcher._group_matches(record, group):
-                    continue
-
                 record_discipline = record.get("discipline", "")
 
                 if not RetakeMatcher._discipline_matches(record_discipline, discipline):

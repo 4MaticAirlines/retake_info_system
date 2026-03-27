@@ -410,7 +410,7 @@ async def search_by_statement(request: Request, file: UploadFile = File(...)):
         statement_results = RetakeMatcher.build_statement_results(
             records=records,
             disciplines=debts_data["disciplines"],
-            group=debts_data["group"],
+            #group=debts_data["group"],
         )
 
         total_matches = sum(len(item["matches"]) for item in statement_results)
