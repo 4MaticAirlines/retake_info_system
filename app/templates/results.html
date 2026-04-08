@@ -19,100 +19,100 @@
     {% endif %}
 </div>
 
-{% if statement_results %}
+{% if search_type == "group" %}
 <div class="card">
-    <h2>Результаты по дисциплинам из выписки</h2>
+    {% if records %}
+        <table>
+            <tr>
+                <th>Дисциплина</th>
+                <th>Преподаватель</th>
+                <th>Группы</th>
+                <th>Дата пересдачи</th>
+                <th>Время пересдачи</th>
+                <th>Аудитория</th>
+                {% if show_consultation %}
+                    <th>Дата консультации</th>
+                    <th>Время консультации</th>
+                    <th>Место консультации</th>
+                {% endif %}
+            </tr>
 
-    <table>
-        <tr>
-            <th>Дисциплина из выписки</th>
-            <th>Преподаватель</th>
-            <th>Группы</th>
-            <th>Дата пересдачи</th>
-            <th>Время пересдачи</th>
-            <th>Аудитория</th>
-            {% if show_consultation %}
-                <th>Дата консультации</th>
-                <th>Время консультации</th>
-                <th>Место консультации</th>
-            {% endif %}
-        </tr>
-
-        {% for item in statement_results %}
-            {% if item.matches %}
-                {% for match in item.matches %}
-                <tr>
-                    <td>{{ item.discipline }}</td>
-                    <td>{{ match.teacher }}</td>
-                    <td>{{ match.groups }}</td>
-                    <td>{{ match.date }}</td>
-                    <td>{{ match.time }}</td>
-                    <td>{{ match.room }}</td>
-                    {% if show_consultation %}
-                        <td>{{ match.consultation_date }}</td>
-                        <td>{{ match.consultation_time }}</td>
-                        <td>{{ match.consultation_room }}</td>
-                    {% endif %}
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td>{{ item.discipline }}</td>
-                    <td colspan="{% if show_consultation %}8{% else %}5{% endif %}">
-                        Информация о пересдаче пока не найдена
-                    </td>
-                </tr>
-            {% endif %}
-        {% endfor %}
-    </table>
-</div>
-{% else %}
-    {% if disciplines %}
-    <div class="card">
-        <h2>Дисциплины из выписки</h2>
-        <ul>
-            {% for discipline in disciplines %}
-                <li>{{ discipline }}</li>
+            {% for record in records %}
+            <tr>
+                <td>{{ record.discipline }}</td>
+                <td>{{ record.teacher }}</td>
+                <td>{{ record.groups }}</td>
+                <td>{{ record.date }}</td>
+                <td>{{ record.time }}</td>
+                <td>{{ record.room }}</td>
+                {% if show_consultation %}
+                    <td>{{ record.consultation_date }}</td>
+                    <td>{{ record.consultation_time }}</td>
+                    <td>{{ record.consultation_room }}</td>
+                {% endif %}
+            </tr>
             {% endfor %}
-        </ul>
-    </div>
+        </table>
+    {% else %}
+        <p>Ничего не найдено.</p>
     {% endif %}
+</div>
+{% endif %}
 
-    <div class="card">
-        {% if records %}
-            <table>
-                <tr>
-                    <th>Дисциплина</th>
-                    <th>Преподаватель</th>
-                    <th>Группы</th>
-                    <th>Дата</th>
-                    <th>Время</th>
-                    <th>Аудитория</th>
-                    {% if show_consultation %}
-                        <th>Дата консультации</th>
-                        <th>Время консультации</th>
-                        <th>Место консультации</th>
-                    {% endif %}
-                </tr>
-                {% for record in records %}
-                <tr>
-                    <td>{{ record.discipline }}</td>
-                    <td>{{ record.teacher }}</td>
-                    <td>{{ record.groups }}</td>
-                    <td>{{ record.date }}</td>
-                    <td>{{ record.time }}</td>
-                    <td>{{ record.room }}</td>
-                    {% if show_consultation %}
-                        <td>{{ record.consultation_date }}</td>
-                        <td>{{ record.consultation_time }}</td>
-                        <td>{{ record.consultation_room }}</td>
-                    {% endif %}
-                </tr>
-                {% endfor %}
-            </table>
-        {% else %}
-            <p>Ничего не найдено.</p>
-        {% endif %}
-    </div>
+{% if search_type == "statement" %}
+<div class="card">
+    {% if statement_results %}
+        <table>
+            <tr>
+                <th>Дисциплина</th>
+                <th>Тип задолженности</th>
+                <th>Статус</th>
+                <th>Преподаватель</th>
+                <th>Группы</th>
+                <th>Дата пересдачи</th>
+                <th>Время пересдачи</th>
+                <th>Аудитория</th>
+                {% if show_consultation %}
+                    <th>Дата консультации</th>
+                    <th>Время консультации</th>
+                    <th>Место консультации</th>
+                {% endif %}
+            </tr>
+
+            {% for item in statement_results %}
+                {% if item.matches %}
+                    {% for match in item.matches %}
+                    <tr>
+                        <td>{{ item.discipline }}</td>
+                        <td>{{ item.debt_type }}</td>
+                        <td>{{ item.status }}</td>
+                        <td>{{ match.teacher }}</td>
+                        <td>{{ match.groups }}</td>
+                        <td>{{ match.date }}</td>
+                        <td>{{ match.time }}</td>
+                        <td>{{ match.room }}</td>
+                        {% if show_consultation %}
+                            <td>{{ match.consultation_date }}</td>
+                            <td>{{ match.consultation_time }}</td>
+                            <td>{{ match.consultation_room }}</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td>{{ item.discipline }}</td>
+                        <td>{{ item.debt_type }}</td>
+                        <td>{{ item.status }}</td>
+                        <td colspan="{% if show_consultation %}8{% else %}5{% endif %}">
+                            Информация о пересдаче пока не найдена
+                        </td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>Ничего не найдено.</p>
+    {% endif %}
+</div>
 {% endif %}
 {% endblock %}

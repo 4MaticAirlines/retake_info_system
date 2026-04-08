@@ -1,3 +1,9 @@
+"""
+Нормализатор строк Excel.
+
+Из сырой строки Excel делает одну нормальную запись о пересдаче.
+"""
+
 import re
 from typing import Any
 
@@ -16,8 +22,17 @@ from app.core.constants import (
 
 
 class DataNormalizer:
+    """
+    Нормализует строки из Excel в единый формат.
+    """
+
     @staticmethod
     def _clean_text(value: Any) -> str:
+        """
+        Нормализует текст:
+        - убирает переводы строк;
+        - убирает лишние пробелы.
+        """
         if value is None:
             return ""
 
@@ -27,6 +42,9 @@ class DataNormalizer:
 
     @staticmethod
     def _normalize_date(value: Any) -> str:
+        """
+        Нормализует дату.
+        """
         text = DataNormalizer._clean_text(value)
         if not text:
             return ""
@@ -39,13 +57,19 @@ class DataNormalizer:
 
     @staticmethod
     def _normalize_time(value: Any) -> str:
+        """
+        Нормализует время.
+        """
         text = DataNormalizer._clean_text(value)
         if not text:
             return ""
-        return text.replace(" ", "")
+        return text
 
     @staticmethod
     def _normalize_group_token(token: str) -> str:
+        """
+        Нормализует одну группу.
+        """
         token = token.strip().upper()
         token = token.replace("–", "-").replace("—", "-")
         token = re.sub(r"\s+", "", token)
@@ -55,11 +79,13 @@ class DataNormalizer:
     @staticmethod
     def _extract_groups_from_text(groups_text: str) -> list[str]:
         """
-        Более агрессивное извлечение групп из строки.
+        Извлекает группы из строки.
+
         Поддерживает:
-        - разделение запятыми, точками с запятой, переводами строк
-        - строки вида: БЭК-22-ФК-1, БЭК-22-ФК-2
-        - одиночные группы внутри большого текста
+        - БИВТ-24-1
+        - БИВТ-24-1, БИВТ-24-2
+        - БИВТ
+        - все группы
         """
         if not groups_text:
             return []
@@ -68,37 +94,61 @@ class DataNormalizer:
         text = text.replace("\r", "\n")
         text = text.replace("–", "-").replace("—", "-")
 
-        # сначала пробуем выделить группы регуляркой
-        # достаточно гибкая для MISIS-форматов
-        pattern = r"[A-Za-zА-Яа-яЁё0-9]+(?:-[A-Za-zА-Яа-яЁё0-9]+){1,6}"
+        # Специальный случай
+        if "все группы" in text.lower():
+            return ["ВСЕ ГРУППЫ"]
+
+        # Сначала пробуем найти группы регуляркой
+        pattern = r"[A-Za-zА-Яа-яЁё0-9]+(?:-[A-Za-zА-Яа-яЁё0-9()]+){0,6}"
         regex_groups = re.findall(pattern, text)
 
         groups = [DataNormalizer._normalize_group_token(item) for item in regex_groups if item.strip()]
 
-        # если регулярка ничего не дала, пробуем обычное разбиение
         if not groups:
             prepared = text.replace(";", ",").replace("\n", ",")
             parts = [part for part in prepared.split(",") if part.strip()]
             groups = [DataNormalizer._normalize_group_token(part) for part in parts if part.strip()]
 
-        # убираем пустые и дубли
         groups = [group for group in groups if group]
         groups = list(dict.fromkeys(groups))
-
         return groups
 
     @staticmethod
+    def _normalize_column_name(column_name: str) -> str:
+        """
+        Нормализует имя колонки для сравнения.
+        """
+        column_name = str(column_name).replace("\r", " ").replace("\n", " ")
+        column_name = re.sub(r"\s+", " ", column_name).strip()
+        return column_name
+
+    @staticmethod
     def _get_value(data: dict, aliases: list[str]) -> str:
+        """
+        Берёт первое непустое значение по списку возможных названий колонки.
+        Сравнение идёт по нормализованным названиям колонок.
+        """
+        normalized_data = {
+            DataNormalizer._normalize_column_name(key): value
+            for key, value in data.items()
+        }
+
         for alias in aliases:
-            if alias in data:
-                raw_value = data.get(alias)
-                cleaned = DataNormalizer._clean_text(raw_value)
-                if cleaned:
-                    return cleaned
+            normalized_alias = DataNormalizer._normalize_column_name(alias)
+
+            for key, raw_value in normalized_data.items():
+                if key == normalized_alias:
+                    cleaned = DataNormalizer._clean_text(raw_value)
+                    if cleaned:
+                        return cleaned
+
         return ""
 
     @staticmethod
     def normalize_rows(rows: list[dict]) -> list[dict]:
+        """
+        Нормализует все строки Excel.
+        """
         normalized: list[dict] = []
 
         current_teacher = ""
@@ -131,12 +181,12 @@ class DataNormalizer:
             )
             consultation_room = DataNormalizer._get_value(data, CONSULTATION_ROOM_COLUMN_ALIASES)
 
+            # Протягиваем значения из предыдущей строки, если это продолжение записи
             if teacher:
                 current_teacher = teacher
             else:
                 teacher = current_teacher
 
-            # очень важно: группы тоже могут идти "продолжением" строки
             if groups:
                 current_groups = groups
             else:
@@ -203,6 +253,9 @@ class DataNormalizer:
 
     @staticmethod
     def _deduplicate_records(records: list[dict]) -> list[dict]:
+        """
+        Удаляет дубликаты записей.
+        """
         unique: list[dict] = []
         seen: set[tuple] = set()
 

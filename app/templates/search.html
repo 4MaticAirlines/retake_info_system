@@ -9,7 +9,7 @@
     <div class="card">
         <h2>Поиск по учебной группе</h2>
         <form action="/files/search-by-group" method="get">
-            <input type="text" name="group" placeholder="Введите группу, например БЭК-22-ФК-2">
+            <input type="text" name="group" placeholder="Введите группу, например БИВТ-24">
             <button type="submit">Найти</button>
         </form>
     </div>
@@ -17,10 +17,10 @@
     <div class="card">
         <h2>Поиск по выписке о задолженностях</h2>
         <form action="/files/search-by-statement" enctype="multipart/form-data" method="post">
-            <input type="file" name="file" accept=".txt,.docx,.pdf">
-            <button type="submit">Загрузить выписку и найти</button>
+            <input type="file" name="file" accept=".pdf">
+            <button type="submit">Загрузить PDF и найти</button>
         </form>
-        <p class="hint">Поддерживаются файлы .txt, .docx и .pdf</p>
+        <p class="hint">Поиск по выписке поддерживается только для PDF-файлов.</p>
     </div>
 </section>
 {% endblock %}

@@ -1,30 +1,35 @@
+"""
+Сервис чтения PDF-выписки.
+
+На этом этапе приложение поддерживает только PDF,
+потому что именно этот формат используется для поиска по выписке.
+"""
+
 from pathlib import Path
 
-from docx import Document
 from pypdf import PdfReader
 
 
 class StatementParser:
+    """
+    Извлекает текст из PDF-выписки.
+    """
+
     @staticmethod
     def parse_statement(file_path: Path) -> str:
+        """
+        Возвращает полный текст PDF-документа.
+        """
         suffix = file_path.suffix.lower()
 
-        if suffix == ".txt":
-            return file_path.read_text(encoding="utf-8", errors="ignore")
+        if suffix != ".pdf":
+            raise ValueError("Поддерживаются только PDF-файлы")
 
-        if suffix == ".docx":
-            document = Document(file_path)
-            paragraphs = [paragraph.text for paragraph in document.paragraphs]
-            return "\n".join(paragraphs)
+        reader = PdfReader(str(file_path))
+        pages_text = []
 
-        if suffix == ".pdf":
-            reader = PdfReader(str(file_path))
-            pages_text: list[str] = []
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            pages_text.append(page_text)
 
-            for page in reader.pages:
-                page_text = page.extract_text() or ""
-                pages_text.append(page_text)
-
-            return "\n".join(pages_text)
-
-        raise ValueError("Поддерживаются только файлы .txt, .docx и .pdf")
+        return "\n".join(pages_text)

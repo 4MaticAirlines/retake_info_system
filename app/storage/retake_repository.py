@@ -1,40 +1,34 @@
+"""
+Репозиторий пересдач.
+
+В этой версии не делаем сложный SQL-поиск по группам,
+а вытаскиваем записи и фильтруем их в Python,
+чтобы логика совпадала с GroupSearch.
+"""
+
 from sqlalchemy.orm import Session
 
 from app.models.retake_record import RetakeRecord
 
 
 class RetakeRepository:
-    @staticmethod
-    def _normalize(group: str) -> str:
-        return str(group).strip().upper()
-
-    @staticmethod
-    def _group_matches(query: str, candidate: str) -> bool:
-        query = RetakeRepository._normalize(query)
-        candidate = RetakeRepository._normalize(candidate)
-
-        if not query or not candidate:
-            return False
-
-        # точное совпадение
-        if query == candidate:
-            return True
-
-        # общий запрос:
-        # БИВТ -> БИВТ-24-1
-        # БИВТ-24 -> БИВТ-24-1
-        if candidate.startswith(query + "-"):
-            return True
-
-        return False
+    """
+    Репозиторий для работы с таблицей пересдач.
+    """
 
     @staticmethod
     def clear_all(db: Session) -> None:
+        """
+        Полностью очищает таблицу пересдач.
+        """
         db.query(RetakeRecord).delete()
         db.commit()
 
     @staticmethod
     def save_many(db: Session, records: list[dict]) -> int:
+        """
+        Сохраняет список пересдач в БД.
+        """
         objects = [
             RetakeRecord(
                 source_file=record.get("source_file", ""),
@@ -61,23 +55,14 @@ class RetakeRepository:
 
     @staticmethod
     def count(db: Session) -> int:
+        """
+        Возвращает количество записей пересдач.
+        """
         return db.query(RetakeRecord).count()
 
     @staticmethod
     def get_all(db: Session) -> list[RetakeRecord]:
+        """
+        Возвращает все пересдачи.
+        """
         return db.query(RetakeRecord).all()
-
-    @staticmethod
-    def find_by_group(db: Session, group: str):
-        query = RetakeRepository._normalize(group)
-        records = db.query(RetakeRecord).all()
-
-        result = []
-        for record in records:
-            groups_normalized = str(record.groups_normalized or "")
-            groups_list = [item.strip().upper() for item in groups_normalized.split(",") if item.strip()]
-
-            if any(RetakeRepository._group_matches(query, item) for item in groups_list):
-                result.append(record)
-
-        return result
