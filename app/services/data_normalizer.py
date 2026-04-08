@@ -80,12 +80,6 @@ class DataNormalizer:
     def _extract_groups_from_text(groups_text: str) -> list[str]:
         """
         Извлекает группы из строки.
-
-        Поддерживает:
-        - БИВТ-24-1
-        - БИВТ-24-1, БИВТ-24-2
-        - БИВТ
-        - все группы
         """
         if not groups_text:
             return []
@@ -94,11 +88,9 @@ class DataNormalizer:
         text = text.replace("\r", "\n")
         text = text.replace("–", "-").replace("—", "-")
 
-        # Специальный случай
         if "все группы" in text.lower():
             return ["ВСЕ ГРУППЫ"]
 
-        # Сначала пробуем найти группы регуляркой
         pattern = r"[A-Za-zА-Яа-яЁё0-9]+(?:-[A-Za-zА-Яа-яЁё0-9()]+){0,6}"
         regex_groups = re.findall(pattern, text)
 
@@ -126,7 +118,6 @@ class DataNormalizer:
     def _get_value(data: dict, aliases: list[str]) -> str:
         """
         Берёт первое непустое значение по списку возможных названий колонки.
-        Сравнение идёт по нормализованным названиям колонок.
         """
         normalized_data = {
             DataNormalizer._normalize_column_name(key): value
@@ -181,7 +172,6 @@ class DataNormalizer:
             )
             consultation_room = DataNormalizer._get_value(data, CONSULTATION_ROOM_COLUMN_ALIASES)
 
-            # Протягиваем значения из предыдущей строки, если это продолжение записи
             if teacher:
                 current_teacher = teacher
             else:
