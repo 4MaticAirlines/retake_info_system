@@ -1,13 +1,13 @@
 """
 Сервис сопоставления дисциплин из выписки с пересдачами из Excel.
 
-Главная логика:
-1. Для каждой дисциплины из выписки ищем все совпадения по названию.
-2. Если среди них есть записи с нужной группой из выписки:
-   - показываем только записи этой группы;
-   - другие группы не показываем вообще.
-3. Если нужной группы нет:
-   - показываем все записи, совпавшие по названию дисциплины.
+Логика:
+1. Ищем все совпадения по названию дисциплины.
+2. Если среди них есть нужная группа — показываем только её.
+3. Внутри найденных записей сортируем:
+   - сначала первичная,
+   - потом вторичная,
+   - потом другое.
 """
 
 import re
@@ -21,10 +21,7 @@ class RetakeMatcher:
     @staticmethod
     def _normalize(text: str) -> str:
         """
-        Нормализует строку для сравнения:
-        - нижний регистр;
-        - убираем лишние символы;
-        - нормализуем пробелы.
+        Нормализует строку для сравнения.
         """
         text = str(text).lower().strip()
         text = re.sub(r"[^a-zа-яё0-9\s-]", " ", text)
@@ -34,7 +31,7 @@ class RetakeMatcher:
     @staticmethod
     def _token_similarity(left: str, right: str) -> float:
         """
-        Считает похожесть двух названий по пересечению слов.
+        Считает похожесть двух названий по словам.
         """
         left_tokens = set(RetakeMatcher._normalize(left).split())
         right_tokens = set(RetakeMatcher._normalize(right).split())
@@ -53,7 +50,7 @@ class RetakeMatcher:
     @staticmethod
     def _discipline_matches(record_discipline: str, statement_discipline: str) -> bool:
         """
-        Проверяет, совпадает ли дисциплина из файла пересдач
+        Проверяет совпадение дисциплины из пересдачи
         с дисциплиной из выписки.
         """
         left = RetakeMatcher._normalize(record_discipline)
@@ -62,21 +59,18 @@ class RetakeMatcher:
         if not left or not right:
             return False
 
-        # Полное совпадение
         if left == right:
             return True
 
-        # Одна строка содержится в другой
         if left in right or right in left:
             return True
 
-        # Мягкое совпадение по словам
         return RetakeMatcher._token_similarity(left, right) >= 0.45
 
     @staticmethod
     def _extract_groups(record: dict) -> list[str]:
         """
-        Возвращает список групп из записи пересдачи.
+        Возвращает список групп из записи.
         """
         groups_list = record.get("groups_list", [])
         if groups_list:
@@ -95,7 +89,7 @@ class RetakeMatcher:
     @staticmethod
     def _group_matches(record: dict, group: str) -> bool:
         """
-        Проверяет, есть ли нужная группа в записи пересдачи.
+        Проверяет, есть ли группа из выписки в записи пересдачи.
         """
         if not group:
             return False
@@ -109,13 +103,9 @@ class RetakeMatcher:
     def _make_record_key(record: dict) -> tuple:
         """
         Формирует ключ уникальности записи.
-
-        Нужен для удаления дублей.
-        Преподаватель оставлен в ключе специально:
-        если у одной дисциплины и группы разные преподаватели,
-        это разные строки и их надо различать.
         """
         return (
+            record.get("retake_type", ""),
             record.get("discipline", ""),
             record.get("teacher", ""),
             record.get("groups", ""),
@@ -130,7 +120,7 @@ class RetakeMatcher:
     @staticmethod
     def _deduplicate_records(records: list[dict]) -> list[dict]:
         """
-        Удаляет полные дубли из списка записей.
+        Удаляет полные дубли записей.
         """
         unique_records = []
         seen = set()
@@ -146,6 +136,41 @@ class RetakeMatcher:
         return unique_records
 
     @staticmethod
+    def _retake_type_order(record: dict) -> int:
+        """
+        Определяет порядок сортировки типов пересдачи.
+
+        Порядок:
+        0 -> первичная
+        1 -> вторичная
+        2 -> другое
+        """
+        retake_type = str(record.get("retake_type", "")).lower()
+
+        if retake_type == "первичная":
+            return 0
+        if retake_type == "вторичная":
+            return 1
+        return 2
+
+    @staticmethod
+    def _sort_records(records: list[dict]) -> list[dict]:
+        """
+        Сортирует записи:
+        - первичная раньше вторичной;
+        - затем по дате, времени и преподавателю.
+        """
+        return sorted(
+            records,
+            key=lambda record: (
+                RetakeMatcher._retake_type_order(record),
+                str(record.get("date", "")),
+                str(record.get("time", "")),
+                str(record.get("teacher", "")),
+            ),
+        )
+
+    @staticmethod
     def build_statement_results(
         records: list[dict],
         debts: list[dict],
@@ -155,9 +180,10 @@ class RetakeMatcher:
         Формирует результат поиска по выписке.
 
         Логика:
-        - сначала ищем все совпадения по названию дисциплины;
-        - если среди них есть записи с нужной группой, показываем только их;
-        - если группы нет, показываем все совпадения по дисциплине.
+        - ищем совпадения по дисциплине;
+        - если есть записи с нужной группой, оставляем только их;
+        - если группы нет, показываем все совпадения по названию;
+        - сортируем: первичная -> вторичная -> другое.
         """
         result = []
 
@@ -166,7 +192,6 @@ class RetakeMatcher:
             debt_type = debt["debt_type"]
             status = debt["status"]
 
-            # Все совпадения по названию дисциплины
             discipline_matches = []
 
             for record in records:
@@ -177,19 +202,16 @@ class RetakeMatcher:
 
                 discipline_matches.append(record)
 
-            # Убираем полные дубли
             discipline_matches = RetakeMatcher._deduplicate_records(discipline_matches)
 
-            # Среди совпадений по дисциплине ищем строки с нужной группой
             group_matches = [
                 record
                 for record in discipline_matches
                 if RetakeMatcher._group_matches(record, group)
             ]
 
-            # Если нашли нужную группу — показываем только её
-            # Если не нашли — показываем всё, что совпало по дисциплине
             final_matches = group_matches if group_matches else discipline_matches
+            final_matches = RetakeMatcher._sort_records(final_matches)
 
             result.append(
                 {

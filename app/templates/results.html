@@ -24,6 +24,8 @@
     {% if records %}
         <table>
             <tr>
+                <!-- Для поиска по группе тип пересдачи уже стоит первым -->
+                <th>Тип пересдачи</th>
                 <th>Дисциплина</th>
                 <th>Преподаватель</th>
                 <th>Группы</th>
@@ -39,6 +41,7 @@
 
             {% for record in records %}
             <tr>
+                <td>{{ record.retake_type }}</td>
                 <td>{{ record.discipline }}</td>
                 <td>{{ record.teacher }}</td>
                 <td>{{ record.groups }}</td>
@@ -64,6 +67,8 @@
     {% if statement_results %}
         <table>
             <tr>
+                <!-- Переставили тип пересдачи в первую колонку -->
+                <th>Тип пересдачи</th>
                 <th>Дисциплина</th>
                 <th>Тип задолженности</th>
                 <th>Статус</th>
@@ -83,6 +88,7 @@
                 {% if item.matches %}
                     {% for match in item.matches %}
                     <tr>
+                        <td>{{ match.retake_type }}</td>
                         <td>{{ item.discipline }}</td>
                         <td>{{ item.debt_type }}</td>
                         <td>{{ item.status }}</td>
@@ -100,6 +106,8 @@
                     {% endfor %}
                 {% else %}
                     <tr>
+                        <!-- Если пересдача не найдена, тип пересдачи пустой -->
+                        <td></td>
                         <td>{{ item.discipline }}</td>
                         <td>{{ item.debt_type }}</td>
                         <td>{{ item.status }}</td>

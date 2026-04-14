@@ -136,6 +136,26 @@ class DataNormalizer:
         return ""
 
     @staticmethod
+    def _detect_retake_type(sheet_name: str) -> str:
+        """
+        Определяет тип пересдачи по названию листа Excel.
+
+        Правила:
+        - 'первич' -> первичная
+        - 'комис' или 'вторич' -> вторичная
+        - иначе -> другое
+        """
+        normalized_sheet_name = DataNormalizer._clean_text(sheet_name).lower()
+
+        if "первич" in normalized_sheet_name:
+            return "первичная"
+
+        if "комис" in normalized_sheet_name or "вторич" in normalized_sheet_name:
+            return "вторичная"
+
+        return "другое"
+
+    @staticmethod
     def normalize_rows(rows: list[dict]) -> list[dict]:
         """
         Нормализует все строки Excel.
@@ -225,6 +245,7 @@ class DataNormalizer:
                 {
                     "source_file": row.get("source_file", ""),
                     "sheet_name": row.get("sheet_name", ""),
+                    "retake_type": DataNormalizer._detect_retake_type(row.get("sheet_name", "")),
                     "discipline": discipline,
                     "teacher": teacher,
                     "groups": groups,
@@ -244,13 +265,14 @@ class DataNormalizer:
     @staticmethod
     def _deduplicate_records(records: list[dict]) -> list[dict]:
         """
-        Удаляет дубликаты записей.
+        Удаляет полные дубликаты записей.
         """
         unique: list[dict] = []
         seen: set[tuple] = set()
 
         for record in records:
             key = (
+                record.get("retake_type", "").lower(),
                 record.get("discipline", "").lower(),
                 record.get("teacher", "").lower(),
                 record.get("groups_normalized", "").lower(),

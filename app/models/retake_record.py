@@ -4,12 +4,27 @@ from app.storage.database import Base
 
 
 class RetakeRecord(Base):
+    """
+    ORM-модель записи о пересдаче.
+
+    Одна запись = одна строка пересдачи после нормализации Excel.
+    """
+
     __tablename__ = "retake_records"
 
     id = Column(Integer, primary_key=True, index=True)
+
+    # Исходный файл и лист, откуда была получена запись.
     source_file = Column(String, nullable=True)
     sheet_name = Column(String, nullable=True)
 
+    # Тип пересдачи:
+    # - первичная
+    # - вторичная
+    # - другое
+    retake_type = Column(String, nullable=True, index=True)
+
+    # Основные поля записи.
     discipline = Column(String, nullable=False, index=True)
     teacher = Column(String, nullable=True)
     groups_raw = Column(String, nullable=True)

@@ -48,6 +48,7 @@ def retake_to_dict(record) -> dict:
         "groups": record.groups_raw or "",
         "groups_normalized": record.groups_normalized or "",
         "groups_list": [item.strip() for item in str(record.groups_normalized or "").split(",") if item.strip()],
+        "retake_type": record.retake_type or "",
         "date": record.date_raw or "",
         "time": record.time_raw or "",
         "room": record.room or "",

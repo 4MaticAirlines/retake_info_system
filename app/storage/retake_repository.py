@@ -1,9 +1,7 @@
 """
 Репозиторий пересдач.
 
-В этой версии не делаем сложный SQL-поиск по группам,
-а вытаскиваем записи и фильтруем их в Python,
-чтобы логика совпадала с GroupSearch.
+Отвечает за сохранение и чтение таблицы пересдач.
 """
 
 from sqlalchemy.orm import Session
@@ -33,6 +31,7 @@ class RetakeRepository:
             RetakeRecord(
                 source_file=record.get("source_file", ""),
                 sheet_name=record.get("sheet_name", ""),
+                retake_type=record.get("retake_type", ""),
                 discipline=record.get("discipline", ""),
                 teacher=record.get("teacher", ""),
                 groups_raw=record.get("groups", ""),
